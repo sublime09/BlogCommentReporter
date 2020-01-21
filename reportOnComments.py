@@ -1,36 +1,46 @@
-xmlFile='/Users/arash/Downloads/gedicommentss19.wordpress.2019-05-08.xml'
 import os
 import csv
 import sys
+import argparse
 from xml.etree import ElementTree
 
-"""This script converts WXR file to a number of plain text files.
+"""
+Create a report of blogging comment participation
 
+This script converts WXR file to a number of plain text files.
 WXR stands for "WordPress eXtended RSS", which basically is just a
 regular XML file. This script extracts entries from the WXR file into
 plain text files. Output format: article name prefixed by date for
 posts, article name for pages.
-
-Usage: wxr2txt.py filename [-o output_dir]
 Original author: Ruslan Osipov
+Updated by: Arash, Patrick Sullivan
+
+usage: reportOnComments.py [-h] input output
+
+positional arguments:
+  input       Input XML file from wordpress for creating comment report
+  output      Destination csv file for comment report
+
+optional arguments:
+  -h, --help  show this help message and exit
 """
+
+# TODO: Improve report.  Average comment length. 
 
 NAMESPACES = {
         'content': 'http://purl.org/rss/1.0/modules/content/',
         'wp': 'http://wordpress.org/export/1.2/',
         'dc': 'http://purl.org/dc/elements/1.1/',
 }
-USAGE_STRING = "Usage: wxr2txt.py filename [-o output_dir]"
 
-def main(argv):
-    # filename, output_dir = _parse_and_validate_output(argv)
-    try:
-        data = ElementTree.parse(xmlFile).getroot()
-    except ElementTree.ParseError:
-        _error("Invalid input file format. Can not parse the input.")
+def main():
+    args = getArgs()
+    xmlRoot = args.input
+    outputFilename = args.output
+
     page_counter, post_counter = 0, 0
     commenters ={}
-    for post in data.find('channel').findall('item'):
+    for post in xmlRoot.find('channel').findall('item'):
         post_type = post.find('wp:post_type', namespaces=NAMESPACES).text
         if post_type not in ('post', 'page'):
             continue
@@ -46,26 +56,26 @@ def main(argv):
                     commenters[creator] += 1
                 else:
                     commenters[creator] = 1
-    with open('mycsvfile.csv','wb') as f:
+    with open(outputFilename,'w', newline='') as f:
         w = csv.writer(f)
-        w.writerow(commenters.keys())
-        w.writerow(commenters.values())
+        for kv in commenters.items():
+            print(kv)
+            w.writerow(kv)
 
-def _parse_and_validate_output(argv):
-    if len(argv) not in (2, 4):
-        _error("Wrong number of arguments.")
-    filename = argv[1]
-    if not os.path.isfile(filename):
-        _error("Input file does not exist (or not enough permissions).")
-    output_dir = argv[3] if len(argv) == 4 and argv[2] == '-o' else os.getcwd()
-    if not os.path.isdir(output_dir):
-        _error("Output directory does not exist (or not enough permissions).")
-    return filename, output_dir
 
-def _error(text):
-    print text
-    print USAGE_STRING
-    sys.exit(1)
+def validXML(filename):
+    try:
+        return ElementTree.parse(filename).getroot()
+    except ElementTree.ParseError as e:
+        print("Error: Could not XML parse", filename, ":", e, file=sys.stderr)
+        exit(1)
+
+def getArgs():
+    parser = argparse.ArgumentParser(description="Create a report of blogging comment participation")
+    parser.add_argument("input", type=validXML, help="Input XML file from wordpress for creating comment report")
+    parser.add_argument("output", nargs="?", default="commentReport.csv", help="Destination csv file for comment report")
+    args = parser.parse_args()
+    return args
 
 if __name__ == "__main__":
-    main(sys.argv)
+    main()
