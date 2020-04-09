@@ -121,5 +121,8 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-lastSemesterWordpress.xml
+
+postData/
+oldExports/
 commentReport.csv
+postReport.csv
